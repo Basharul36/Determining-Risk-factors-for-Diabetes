@@ -1,0 +1,255 @@
+#Performing Statistical analysis of given diabetes data
+
+install.packages("tidyverse") 
+install.packages("caTools")
+
+library(tidyverse) #Tidyverse is used for cleaning the data in this project
+library(corrplot)  #Used to depict correlation matrix
+library(caTools)   #Used for Plotting
+library(lme4)      #Used of regression modelling
+library(ggplot2)   #Used for Plotting
+
+#Read the file
+getwd()
+setwd("C:/Users/Basharul/Documents/NTU/Statistics_Term2/Courseworks/N1086682_R_Coursework")
+diabetes_data <- read.csv("diabetes.csv", header = TRUE)
+
+#Printing the dataset
+diabetes_data
+summary(diabetes_data)
+
+#Removing the Pregnancies variable
+diabetes_data_1 <- diabetes_data[,-1] # Removed pregnancies variable according to instructions
+diabetes_data_1 <- diabetes_data_1[,-4] # Removed Insulin variable due to lot of missing values
+diabetes_data_1 <- diabetes_data_1[,-3] # Removed Skinthickness variable due to lot of missing values
+
+diabetes_data_2 <- diabetes_data_1
+# Printing the modified dataset
+diabetes_data_1
+
+
+attach(diabetes_data_1)
+
+# To get overview of the dataset
+glimpse(diabetes_data_1)
+
+# Cleaning the data by changing the 0 value to NA
+diabetes_data_1["Glucose"][diabetes_data_1["Glucose"] == 0] <- NA 
+diabetes_data_1["BloodPressure"][diabetes_data_1["BloodPressure"] == 0] <- NA 
+diabetes_data_1["BMI"][diabetes_data_1["BMI"] == 0] <- NA 
+diabetes_data_1["DiabetesPedigreeFunction"][diabetes_data_1["DiabetesPedigreeFunction"] == 0] <- NA
+diabetes_data_1["Age"][diabetes_data_1["Age"] == 0] <- NA
+
+# Counting NA values each column
+sum(is.na(diabetes_data_1$Glucose))
+sum(is.na(diabetes_data_1$BloodPressure))
+sum(is.na(diabetes_data_1$BMI))
+sum(is.na(diabetes_data_1$DiabetesPedigreeFunction))
+sum(is.na(diabetes_data_1$Age))
+
+
+# Mean imputation is implemented for required columns to fill the missing values
+mean_glucose <- mean(Glucose, na.rm = TRUE)
+diabetes_data_1[is.na(diabetes_data_1$Glucose), "Glucose"] <- mean_glucose
+
+mean_bloodpressure <- mean(BloodPressure, na.rm = TRUE)
+diabetes_data_1[is.na(diabetes_data_1$BloodPressure), "BloodPressure"] <- mean_bloodpressure
+
+mean_BMI <- mean(BMI, na.rm = TRUE)
+diabetes_data_1[is.na(diabetes_data_1$BMI), "BMI"] <- mean_BMI
+
+
+
+# Visualize the plots for each variable
+par(mfrow = c(2,4))
+
+hist(Glucose, xlab = "Glucose",ylab = "mmol/L", breaks = 20 )
+hist(BloodPressure, xlab = "BloodPressure",ylab = "mmHg", breaks = 30 )
+qqnorm(BMI, ylab = "BMI", plot.it = TRUE, main = "Q-Q Plot of BMI")
+qqline(BMI, col = 2)
+hist(DiabetesPedigreeFunction, xlab = "DiabetesPedigreeFunction",ylab = "Quantities", breaks = 20 )
+hist(Age, xlab = "Age",ylab = "Quantities", breaks = 30 )
+plot(DiabetesPedigreeFunction,Outcome,
+     main="DiabetesPedigreeFunction VS Outcome",
+     xlab="DiabetesPedigreeFunction",
+     ylab="Outcome")
+plot(DiabetesPedigreeFunction,Age,
+     main="DiabetesPedigreeFunction VS Age",
+     xlab="DiabetesPedigreeFunction",
+     ylab="Age")
+
+# Calculating the total percentage of diabetes and non-diabetes
+diabetes_data_1 %>% 
+  group_by( Outcome ) %>% 
+  summarise( percent = 100 * n() / nrow( diabetes_data_1 ) )
+
+# Standard deviation calculations for variables
+sd(Glucose)
+sd(BMI)
+sd(Age)
+
+# Seperating the dataset for women having diabetes and women not having diabetes
+women_in_diabetes <- dplyr::filter(diabetes_data_1, Outcome == 1 )
+women_in_diabetes
+
+women_not_in_diabetes <- dplyr::filter(diabetes_data_1, Outcome == 0 )
+women_not_in_diabetes
+
+# summary of datasets
+summary(diabetes_data_1)
+summary(women_in_diabetes)
+summary(women_not_in_diabetes)
+
+#Check Normality of each variable using shapiro-wilk test
+shapiro.test(Glucose)
+shapiro.test(BloodPressure)
+shapiro.test(BMI)
+shapiro.test(DiabetesPedigreeFunction)
+
+#Performing T-test to assess the differences in central tendencies of predictor variables
+#with respect to diabetes outcome
+
+# Two - sample t-test
+# Ho: The mean glucose level of Non-diabetes  = The mean glucose level of diabetes
+# assume non - equal variances
+t.test(Glucose ~ Outcome, mu = 0, alt = "two.sided", conf = 0.95, var.eq = F, paired = F)
+
+# Two - sample t-test
+# Ho: The mean age of Non-diabetes  = The mean age of diabetes
+# assume non - equal variances
+t.test(Age ~ Outcome, mu = 0, alt = "two.sided", conf = 0.95, var.eq = F, paired = F)
+
+
+# Two - sample t-test
+# Ho: The mean BMI of Non-diabetes  = The mean BMI of diabetes
+# assume non - equal variances
+t.test(BMI ~ Outcome, mu = 0, alt = "two.sided", conf = 0.95, var.eq = F, paired = F)
+
+
+# Two - sample t-test
+# Ho: The mean DiabetesPedigreeFunction of Non-diabetes  = The mean DiabetesPedigreeFunction of diabetes
+# assume non - equal variances
+t.test(DiabetesPedigreeFunction ~ Outcome, mu = 0, alt = "two.sided", conf = 0.95, var.eq = F, paired = F)
+
+
+
+
+# Plots to depict central tendencies of clinical variable and diabetes outcome
+par(mfrow = c(1,4))
+boxplot(Glucose ~ Outcome)
+boxplot(Age ~ Outcome)
+boxplot(BMI ~ Outcome)
+boxplot(DiabetesPedigreeFunction ~ Outcome)
+
+# Variance of Glucose
+var(women_in_diabetes$Glucose)
+var(women_not_in_diabetes$Glucose)
+
+
+
+# Correlation Coefficient calculation and its plot
+M = cor(diabetes_data_1, method = "pearson")
+corrplot(M, method = 'number')
+
+# Different methods of calculating correlation coefficient
+cor(diabetes_data_1$Glucose, diabetes_data_1$Outcome, method = "pearson")
+cor(diabetes_data_1$Glucose, diabetes_data_1$Outcome, method = "kendall")
+cor(diabetes_data_1$Glucose, diabetes_data_1$Outcome, method = "spearman")
+
+plot(Glucose, Outcome)
+
+pairs(diabetes_data_1)
+plot(diabetes_data_1)
+
+#Correlation coeeficient plots
+par(mfrow = c(1,1))
+ 
+plot(diabetes_data_1$Glucose,diabetes_data_1$Outcome, pch = 21,
+     bg = "green",   
+     col = "blue", 
+     cex = 1,      
+     lwd = 1,
+     xlab = "Glucose",
+     ylab = "Outcome",
+     main = "Correlation Plot for Glucose and Outcome")
+abline(lm(diabetes_data_1$Outcome ~diabetes_data_1$Glucose), lwd=2)
+text(x=70,y=0.8, labels = paste("Correlation =", round(cor(diabetes_data_1$Glucose, diabetes_data_1$Outcome),2)))
+
+plot(diabetes_data_1$BloodPressure,diabetes_data_1$Age, pch = 21,
+     bg = "pink",   
+     col = "blue", 
+     cex = 1,      
+     lwd = 1,
+     xlab = "Blood Pressure",
+     ylab = "Age",
+     main = "Correlation Plot for Blood Pressure and Age")
+abline(lm(diabetes_data_1$Age ~ diabetes_data_1$BloodPressure), lwd=2)
+text(x=40,y=70, labels = paste("Correlation =", round(cor(diabetes_data_1$BloodPressure, diabetes_data_1$Age),2)))
+
+plot(diabetes_data_1$BMI,diabetes_data_1$Outcome, pch = 21,
+     bg = "red",   
+     col = "blue", 
+     cex = 1,      
+     lwd = 2,
+     xlab = "BMI",
+     ylab = "Outcome",
+     main = "Correlation Plot for BMI and Outcome") 
+abline(lm(diabetes_data_1$Outcome ~ diabetes_data_1$BMI), lwd=2)
+text(x=60,y=0.2, labels = paste("Correlation =", round(cor(diabetes_data_1$BMI, diabetes_data_1$Outcome),2)))
+
+plot(diabetes_data_1$BMI,diabetes_data_1$BloodPressure, pch = 21,
+     bg = "yellow",   
+     col = "blue", 
+     cex = 1,      
+     lwd = 2,
+     xlab = "BMI",
+     ylab = "BloodPressure",
+     main = "Correlation Plot for BMI and Blood Pressure")
+abline(lm(diabetes_data_1$BloodPressure ~ diabetes_data_1$BMI), lwd=2)
+text(x=60,y=40, labels = paste("Correlation =", round(cor(diabetes_data_1$BMI, diabetes_data_1$BloodPressure),2)))
+
+plot(diabetes_data_1$Glucose,diabetes_data_1$Age, pch = 21,
+     bg = "cyan",   
+     col = "blue", 
+     cex = 1,      
+     lwd = 1,
+     xlab = "Glucose",
+     ylab = "Age",
+     main = "Correlation Plot for Glucose and Age")
+abline(lm(diabetes_data_1$Age ~ diabetes_data_1$Glucose), lwd=2)
+text(x=60,y=80, labels = paste("Correlation =", round(cor(diabetes_data_1$Glucose, diabetes_data_1$Age),2)))
+
+
+# Logistic Regression modelling
+
+set.seed(123) # For code reproducability
+attach(diabetes_data_1)
+split = sample.split(diabetes_data_1$Outcome, SplitRatio = 0.7)
+trained_data = subset(diabetes_data_1, split == TRUE)
+test_data = subset(diabetes_data_1, split == FALSE)
+
+logreg_model <- glm(Outcome ~ Glucose + BMI + Age, data = trained_data, family = "binomial")
+summary(logreg_model)
+
+plot(Glucose, jitter(Outcome, 0.60), xlab = "Glucose", ylab = "Outcome", main = "Logistic Regression Model for Diabetes Outcome", col = c("blue","green")[as.factor(Outcome)],pch = c(18,19)[as.factor(Outcome)])
+legend("topleft", col = c("blue", "green"), pch = c(18,19), legend = c("Not Having Diabetes", "Having Diabetes"))
+
+glucose_range <- seq(min(Glucose), max(Glucose), length.out = 100)
+predicted_probability <- predict(logreg_model, newdata = data.frame(Glucose = glucose_range, BMI = mean(BMI), Age = mean(Age)), type = "response")
+lines(glucose_range,predicted_probability, col ="red", lwd = 2)
+summary(predicted_probs)
+
+# Subsetting the data in which the glucose does not have missing entries
+data_frame_glucose <- dplyr::filter(diabetes_data_2, Glucose != 0)
+data_frame_glucose_missing <- dplyr::filter(diabetes_data_2, Glucose == 0)
+
+# Fitting a linear regression model to predict glucose from Age
+linreg_glucose_age <- lm(Glucose ~ Age, data = data_frame_glucose)
+
+summary(linreg_glucose_age)
+
+# Predicting Glucose of missing entries
+Glucose_Pred <- predict(linreg_glucose_age, newdata = data_frame_glucose_missing)
+
+# Storing the predicted values in the dataset
+data_frame_glucose_missing$Glucose <- Glucose_Pred
